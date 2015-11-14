@@ -133,6 +133,7 @@ class Network(object):
                 self.y:
                 training_y[i*self.mini_batch_size: (i+1)*self.mini_batch_size]
             })
+        
         train_mb = theano.function(
             [i], cost, updates=updates,
             givens={
@@ -177,19 +178,23 @@ class Network(object):
         out_validation_accuracy, out_training_accuracy = [], []
         out_mean_grad = []
         for epoch in xrange(epochs):
+            sum_grad = 0
+            nsum_grad = 0
             for minibatch_index in xrange(num_training_batches):
                 iteration = num_training_batches*epoch+minibatch_index
                 #if iteration % 1000 == 0:
                 #    print("Training mini-batch number {0}".format(iteration))
                 cost_ij = train_mb(minibatch_index)
-
+                tmp = grad_val(minibatch_index);
+                sum_grad = sum_grad + np.sum(np.power(tmp, 2))
+                nsum_grad = nsum_grad + np.size(tmp)
+                
                 if (iteration+1) % num_training_batches == 0:
                     validation_accuracy = np.mean(
                         [validate_mb_accuracy(j) for j in xrange(num_validation_batches)])
                     training_accuracy = np.mean(
                             [training_mb_accuracy(j) for j in xrange(num_training_batches)])
-                    mean_grad = np.mean(np.power(grad_val(minibatch_index), 2))
-                        
+                    mean_grad = sum_grad / nsum_grad
                     if monitor_data:
                         out_validation_accuracy.append(validation_accuracy)
                         out_training_accuracy.append(training_accuracy)
