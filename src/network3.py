@@ -43,12 +43,10 @@ from theano.tensor import shared_randomstreams
 from theano.tensor.signal import downsample
 
 # Activation functions for neurons
-def linear(z): returnz 
+def linear(z): return z 
 def ReLU(z): return T.maximum(0.0, z)
 from theano.tensor.nnet import sigmoid
 from theano.tensor import tanh
-
-from decimal import Decimal
 
 #### Constants
 GPU = True
@@ -126,14 +124,13 @@ class Network(object):
         # accuracy in validation and test mini-batches.
         i = T.lscalar() # mini-batch index
         grad_val = theano.function(
-            [i], T.grad(cost, self.params[0]),
+            [i], [T.grad(cost, self.params[0]), T.grad(cost, self.params[1])],
             givens={
                 self.x:
                 training_x[i*self.mini_batch_size: (i+1)*self.mini_batch_size],
                 self.y:
                 training_y[i*self.mini_batch_size: (i+1)*self.mini_batch_size]
             })
-        
         train_mb = theano.function(
             [i], cost, updates=updates,
             givens={
@@ -177,6 +174,7 @@ class Network(object):
         best_validation_accuracy = 0.0
         out_validation_accuracy, out_training_accuracy = [], []
         out_mean_grad = []
+        out_layer_grad = []
         for epoch in xrange(epochs):
             sum_grad = 0
             nsum_grad = 0
@@ -185,10 +183,10 @@ class Network(object):
                 #if iteration % 1000 == 0:
                 #    print("Training mini-batch number {0}".format(iteration))
                 cost_ij = train_mb(minibatch_index)
-                tmp = grad_val(minibatch_index);
-                sum_grad = sum_grad + np.sum(np.power(tmp, 2))
-                nsum_grad = nsum_grad + np.size(tmp)
-                
+                wgrad, bgrad = grad_val(minibatch_index);
+                sum_grad = sum_grad + np.sum(np.power(wgrad, 2)) + np.sum(np.power(bgrad, 2)) 
+                nsum_grad = nsum_grad + np.size(wgrad) + np.size(bgrad)
+
                 if (iteration+1) % num_training_batches == 0:
                     validation_accuracy = np.mean(
                         [validate_mb_accuracy(j) for j in xrange(num_validation_batches)])
@@ -284,7 +282,7 @@ class FullyConnectedLayer(object):
         self.w = theano.shared(
             np.asarray(
                 np.random.normal(
-                    loc=0.0, scale=np.sqrt(1.0/n_in), size=(n_in, n_out)),
+                    loc=0.0, scale=np.sqrt(1.0/n_out), size=(n_in, n_out)),
                 dtype=theano.config.floatX),
             name='w', borrow=True)
         self.b = theano.shared(
